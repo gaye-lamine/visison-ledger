@@ -101,7 +101,7 @@ async def brain_stream():
     async def event_generator():
         # Short sleep to let classification complete
         await asyncio.sleep(1.0)
-        state = load_state()
+        state = await load_state()
         latest_id = state.get("latest_crisis_id", "CRISIS-INIT")
         s = state.get(latest_id, state["CRISIS-INIT"])
         
