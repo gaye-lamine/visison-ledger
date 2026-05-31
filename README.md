@@ -17,35 +17,42 @@ It utilizes an autonomous swarm of AI agents (Triage, Financial, Logistics, Temp
 ## 📊 Technical Architecture & System Flow
 
 ```mermaid
-graph TD
-    subgraph "Client Layer (React 3D)"
-        UI["War Room Dashboard"] -->|1. Ingestion / Crisis Input| SSE["Brain Stream Listener"]
-        UI -->|4. Sourcing Route Decision| HITL["Decision Intelligence Sheet"]
+flowchart TD
+    %% 1. Ingestion
+    subgraph Ingestion ["1. INGESTION (Social Anomaly)"]
+        Radar["Sentinel Radar AI"] -->|Detects Disruption| API["FastAPI Gateway"]
     end
 
-    subgraph "Orchestration Layer (UiPath Maestro)"
-        Maestro(("UiPath Maestro")) -->|2. Case Management State| API
-        HITL -->|5. Authorize Route Webhook| Maestro
-        Maestro -->|7. ERP PO Creation Robot| SAP["Enterprise SAP ECC"]
+    %% 2. Cognitive Analysis
+    subgraph Cognition ["2. COGNITIVE INVESTIGATION (AI Swarm)"]
+        API -->|Invokes Swarm| Triage["Triage Agent"]
+        Triage -->|Exposes Cost| Finance["Financial Agent"]
+        Finance -->|Validates Graph| Logistics["Logistics Agent"]
+        Logistics -->|Verifies Sanctions| Compliance["Compliance Agent"]
     end
 
-    subgraph "Cognitive Layer (FastAPI & Gemini)"
-        API["FastAPI Gateway"] -->|3. SSE Event Stream| SSE
-        API -->|6. Compile Audit Ledger| PDF["fpdf2 PDF Report Generator"]
-        PDF -->|Cryptographic Signature| QR["qrcode metadata JSON"]
-        
-        subgraph "AI Agent Swarm (Gemini 2.5 Flash)"
-            T["Triage Agent"] --> F["Financial Agent"] --> L["Logistics Agent"] --> C["Compliance Agent"]
-        end
+    %% 3. Human Approval
+    subgraph Approval ["3. GOVERNANCE (Human-in-the-Loop)"]
+        Compliance -->|Generates Decision Sheet| Dashboard["3D War Room UI"]
+        Dashboard -->|Sourcing Officer Review| HITL{"Approve Route?"}
     end
 
-    classDef ui fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#fff;
-    classDef maestro fill:#f97316,stroke:#ea580c,stroke-width:2px,color:#fff;
-    classDef cognitive fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#fff;
+    %% 4. Robotic Execution
+    subgraph Execution ["4. AUTOMATED EXECUTION (UiPath Maestro)"]
+        HITL -->|Yes: Authorize Webhook| Maestro["UiPath Maestro Orchestrator"]
+        Maestro -->|Spawns Robot| Robot["Maestro Robot-981"]
+        Robot -->|1. Creates SAP Purchase Order| SAP["Enterprise ERP (SAP)"]
+        Robot -->|2. Generates Cryptographic PDF| PDF["PDF Ledger + Audit QR Code"]
+    end
+
+    %% Styling
+    classDef step fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff;
+    classDef highlight fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#fff;
+    classDef execute fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#fff;
     
-    class UI,HITL,SSE ui;
-    class Maestro,SAP maestro;
-    class API,T,F,L,C,PDF,QR cognitive;
+    class Radar,API,Dashboard step;
+    class Triage,Finance,Logistics,Compliance highlight;
+    class Maestro,Robot,SAP,PDF,HITL execute;
 ```
 
 ---
