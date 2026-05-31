@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  aegis-api:
+    build: .
+    container_name: aegis-api
+    restart: unless-stopped
+    ports:
+      - "8080:8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.aegis.rule=Host(`aegis.backnd-api.cloud`)"
+      - "traefik.http.routers.aegis.entrypoints=websecure"
+      - "traefik.http.routers.aegis.tls.certresolver=letsencrypt" # <-- Vérifiez le nom de votre resolver Traefik
+      - "traefik.http.services.aegis.loadbalancer.server.port=8000"
+    environment:
+      - ENV=production
+
+# Si vous utilisez un réseau externe pour Traefik, décommentez ceci :
+# networks:
+#   default:
+#     external:
+#       name: nom_de_votre_reseau_traefik
