@@ -18,24 +18,24 @@ It utilizes an autonomous swarm of AI agents (Triage, Financial, Logistics, Temp
 
 ```mermaid
 graph TD
-    subgraph Client Layer (React 3D)
-        UI[War Room Dashboard] -->|1. Ingestion / Crisis Input| SSE[Brain Stream Listener]
-        UI -->|4. Sourcing Route Decision| HITL[Decision Intelligence Sheet]
+    subgraph "Client Layer (React 3D)"
+        UI["War Room Dashboard"] -->|1. Ingestion / Crisis Input| SSE["Brain Stream Listener"]
+        UI -->|4. Sourcing Route Decision| HITL["Decision Intelligence Sheet"]
     end
 
-    subgraph Orchestration Layer (UiPath Maestro)
-        Maestro((UiPath Maestro)) -->|2. Case Management State| API
+    subgraph "Orchestration Layer (UiPath Maestro)"
+        Maestro(("UiPath Maestro")) -->|2. Case Management State| API
         HITL -->|5. Authorize Route Webhook| Maestro
-        Maestro -->|7. ERP PO Creation Robot| SAP[Enterprise SAP ECC]
+        Maestro -->|7. ERP PO Creation Robot| SAP["Enterprise SAP ECC"]
     end
 
-    subgraph Cognitive Layer (FastAPI & Gemini)
-        API[FastAPI Gateway] -->|3. SSE Event Stream| SSE
-        API -->|6. Compile Audit Ledger| PDF[fpdf2 PDF Report Generator]
-        PDF -->|Cryptographic Signature| QR[qrcode metadata JSON]
+    subgraph "Cognitive Layer (FastAPI & Gemini)"
+        API["FastAPI Gateway"] -->|3. SSE Event Stream| SSE
+        API -->|6. Compile Audit Ledger| PDF["fpdf2 PDF Report Generator"]
+        PDF -->|Cryptographic Signature| QR["qrcode metadata JSON"]
         
-        subgraph AI Agent Swarm (Gemini 2.5 Flash)
-            T[Triage Agent] ➔ F[Financial Agent] ➔ L[Logistics Agent] ➔ C[Compliance Agent]
+        subgraph "AI Agent Swarm (Gemini 2.5 Flash)"
+            T["Triage Agent"] --> F["Financial Agent"] --> L["Logistics Agent"] --> C["Compliance Agent"]
         end
     end
 
