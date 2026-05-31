@@ -1,0 +1,36 @@
+# OS Metadata
+.DS_Store
+Thumps.db
+
+# Private Pitch and temporary notes
+pitch.md
+Aegis_Project_Documentation.md
+Maestro_BPMN_Schema.md
+docs/AI_DEVELOPMENT_LOG.md
+
+# Python local environments and caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Node local modules and build files
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Editor metadata
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
