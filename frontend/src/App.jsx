@@ -178,7 +178,7 @@ export default function App() {
       if (execRes.rpa_logs && execRes.rpa_logs.length > 0) {
         for (let i = 0; i < execRes.rpa_logs.length; i++) {
           setRpaLogs(prev => [...prev, execRes.rpa_logs[i]]);
-          await new Promise(r => setTimeout(r, 650));
+          await new Promise(r => setTimeout(r, 1500));
         }
       }
       
