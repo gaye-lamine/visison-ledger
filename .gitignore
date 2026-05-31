@@ -35,3 +35,6 @@ dist-ssr/
 *.njsproj
 *.sln
 *.swp
+
+# Chrome Debug Profile
+.chrome-profile/
