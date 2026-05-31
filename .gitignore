@@ -2,8 +2,9 @@
 .DS_Store
 Thumps.db
 
-# Private Pitch and temporary notes
+# Private Pitch, Devpost story and temporary notes
 pitch.md
+story.md
 Aegis_Project_Documentation.md
 Maestro_BPMN_Schema.md
 docs/AI_DEVELOPMENT_LOG.md
