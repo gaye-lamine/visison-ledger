@@ -1,12 +1,24 @@
 #!/bin/bash
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-VPS_USER="root"
-VPS_IP="72.60.213.116"
+# Load environment variables from .env file if it exists
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
+VPS_USER="${VPS_USER:-root}"
+VPS_IP="${VPS_IP:-72.60.213.116}"
 DEST_DIR="/root/aegis-backend"
 
-# Auto-accept host keys
-SSH_OPTS="-o StrictHostKeyChecking=no"
+# If VPS_PASSWORD is set, use sshpass
+if [ -n "$VPS_PASSWORD" ]; then
+    export SSHPASS="$VPS_PASSWORD"
+    SSH_CMD="sshpass -e ssh -o StrictHostKeyChecking=no"
+    RSYNC_SSH="sshpass -e ssh -o StrictHostKeyChecking=no"
+else
+    SSH_CMD="ssh -o StrictHostKeyChecking=no"
+    RSYNC_SSH="ssh -o StrictHostKeyChecking=no"
+fi
 
 echo "🚀 Starting deployment to $VPS_USER@$VPS_IP..."
 echo "📂 Target directory: $DEST_DIR"
@@ -14,14 +26,14 @@ echo "📂 Target directory: $DEST_DIR"
 # ── 1. Créer le répertoire sur le VPS ─────────────────────────────────────────
 echo ""
 echo "📁 Creating remote directory..."
-ssh $SSH_OPTS $VPS_USER@$VPS_IP "mkdir -p $DEST_DIR"
+$SSH_CMD $VPS_USER@$VPS_IP "mkdir -p $DEST_DIR"
 
 # ── 2. Copier les fichiers (le dossier agents) ────────────────────────────────
 echo ""
 echo "📦 Copying files..."
 # On copie tout le contenu du dossier courant (agents)
 rsync -avz --progress \
-    -e "ssh $SSH_OPTS" \
+    -e "$RSYNC_SSH" \
     --exclude '__pycache__' \
     --exclude 'venv' \
     --exclude '.git' \
@@ -32,7 +44,7 @@ rsync -avz --progress \
 # ── 4. Exécuter les commandes sur le VPS ──────────────────────────────────────
 echo ""
 echo "🔧 Configuring server and starting containers..."
-ssh $SSH_OPTS $VPS_USER@$VPS_IP << EOF
+$SSH_CMD $VPS_USER@$VPS_IP << EOF
 
 cd $DEST_DIR
 

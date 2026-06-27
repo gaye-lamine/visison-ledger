@@ -2,9 +2,9 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 class DisruptionSignal(BaseModel):
-    supplier_name: str
+    supplier_name: Optional[str] = "GlobalTech"
     document_text: str
-    date: str
+    date: Optional[str] = None
 
 class ClassificationResult(BaseModel):
     crisis_id: str
@@ -14,6 +14,10 @@ class ClassificationResult(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     location_name: Optional[str] = None
+    crisis_type: Optional[str] = "SUPPLY_CHAIN_DISRUPTION"
+    workflow: Optional[str] = "procurement"
+    affected_systems: Optional[List[str]] = None
+    allowed_agents: Optional[List[str]] = None
 
 class FinancialImpact(BaseModel):
     crisis_id: str

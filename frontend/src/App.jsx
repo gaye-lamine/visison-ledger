@@ -5,7 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 
 const API_BASE = import.meta.env.VITE_API_BASE || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:8080/api/v1' 
+    ? 'http://localhost:8089/api/v1' 
     : 'https://aegis.backnd-api.cloud/api/v1');
 
 export default function App() {
@@ -18,6 +18,7 @@ export default function App() {
   const [executionResult, setExecutionResult] = useState(null);
   const [rpaLogs, setRpaLogs] = useState([]);
   const [rpaFinished, setRpaFinished] = useState(false);
+  const [policyData, setPolicyData] = useState(null);  // CPE policy for active crisis
   
   // Brain Stream State
   const [streamLogs, setStreamLogs] = useState([]);
@@ -28,7 +29,6 @@ export default function App() {
   
   // Dynamic Inputs
   const [crisisInput, setCrisisInput] = useState("Social Radar triggered Force Majeure protocol. Tsunami warning in Taiwan.");
-  const [maestroUrl, setMaestroUrl] = useState("https://staging.uipath.com/hackathon26_269/39051d92-8f24-48ec-8f02-789fa3bcc72e/elements_/v1/webhooks/events/Z35DgvbF_xfMXXKYOPg79aGVzLncQiijWgvpgTkVismibg5aIrmTIX6bHiUMio2ylVjMAxZbK1feEeln6FPPaw");
 
   const globeRef = useRef();
 
@@ -93,7 +93,33 @@ export default function App() {
 
   const triggerLocalSwarmStream = () => {
     setStreamLogs([]);
-    const mockLogs = [
+    const isCyber = /ransomware|cyber|attack|wms|system|api|database|hack/i.test(crisisInput);
+    const mockLogs = isCyber ? [
+      "[System] Crisis Payload Received: Disruption detected at Rotterdam WMS Hub.",
+      "[System] Crisis context analyzed: 'WMS ransomware attack affecting customs and tracking...'",
+      "[Triage Agent] Classifying disruption severity... CRITICAL. Triggering logistics continuity fallback.",
+      "[Triage Agent] Classified: LOGISTICS SYSTEM FAILURE (RANSOMWARE)",
+      "[Impact Agent] Analyzing affected logistics IT systems...",
+      "[Impact Agent] Affected Systems: Warehouse Management System (WMS), Shipment Tracking API, Customs Documentation Interface",
+      "[Impact Agent] Operational Impact: Inventory visibility degraded (100%), shipment tracking offline, customs processing delayed.",
+      "[Dependency Graph Agent] 🧠 Analyzing N-Tier logistics network dependencies and supplier maps...",
+      "[Dependency Graph Agent] Detected: 47 active shipments with unknown status, 12 distribution centers impacted, compromised provider: 'North Sea Freight GmbH'.",
+      "[Dependency Graph Agent] ❌ REJECTING compromised provider 'North Sea Freight GmbH' to avoid data leakage and cascading failures.",
+      "[Contingency Agent] No supplier replacement required. Activating IT backup provider workflow.",
+      "[Contingency Agent] Recommended Contingency Actions: Switch to manual shipment tracking fallback, redirect API queries to backup provider 'TransPacific Logistics Inc.', freeze non-critical shipments, notify customs via offline process.",
+      "[Compliance Agent] Initiating security audit & SOC2/GDPR compliance verification on backup logistics partner 'TransPacific Logistics Inc.'...",
+      "[Compliance Agent] Security verification complete: SOC2 Certified. Sanctions database checked: Clear. ESG Score: 99/100.",
+      "[Financial Agent] Computing operational exposure and daily disruption cost in Rotterdam WMS Hub...",
+      "[Financial Agent] 🌐 [LIVE WEB] Fetching realtime local exchange rates...",
+      "[Financial Agent] 🌐 [LIVE WEB] Exchange rates obtained. Financial exposure mapped to current USD valuation.",
+      "[Financial Agent] Estimated operational disruption cost: $350k/day. Total exposure: $2.10M.",
+      "[Sandbox Agent] 💻 Executing Python freight redirection optimization model (redirection ratio: 80% Air / 20% Sea)...",
+      "[Sandbox Agent] 💻 Sandboxed code execution returned optimal failover routing distribution.",
+      "[Arbitration System] ⚖️ Initiating multi-model arbitration confidence matrix...",
+      "[Arbitration System] ⚖️ Quantitative Model: 85% | Legal LLM: 91% | Route Model: 83%.",
+      "[Arbitration System] ✅ Continuity plan with backup provider 'TransPacific Logistics Inc.' approved with 86% weighted confidence.",
+      "[System] AI Multi-Agent orchestration complete. XAI Report compiled. Awaiting Sourcing Officer authorization."
+    ] : [
       "[System] Crisis Payload Received: Disruption detected at Taiwan (Crisis).",
       "[System] Crisis context analyzed: 'Social Radar triggered Force Majeure protocol...'",
       "[Triage Agent] Classifying disruption severity... CRITICAL. Triggering sourcing fallback.",
@@ -161,7 +187,9 @@ export default function App() {
     
     eventSource.onmessage = (event) => {
       sseTriggered = true;
-      setStreamLogs((prev) => [...prev, event.data]);
+      if (event.data && event.data.trim()) {
+        setStreamLogs((prev) => [...prev, event.data.trim()]);
+      }
     };
     
     eventSource.onerror = () => {
@@ -190,6 +218,14 @@ export default function App() {
       }).then(r => r.json());
       setCrisisData(classRes);
       
+      // ── CPE: fetch active policy (DAG + weights + risk gate) ──────────────
+      try {
+        const policyRes = await fetch(`${API_BASE}/policy`).then(r => r.json());
+        setPolicyData(policyRes);
+      } catch(e) {
+        console.warn("Policy endpoint unavailable, DAG panel will be hidden.");
+      }
+
       const newCrisisLoc = { lat: classRes.lat || 0, lng: classRes.lng || 0, name: classRes.location_name || 'Crisis Zone' };
       setDynamicLocations(prev => ({ ...prev, Crisis: newCrisisLoc }));
 
@@ -234,7 +270,7 @@ export default function App() {
       ]);
 
       // 4. Compliance Check
-      const compRes = await fetch(`${API_BASE}/compliance-check?supplier_name=${supRes[0].name}`, {
+      const compRes = await fetch(`${API_BASE}/compliance-check?supplier_name=${encodeURIComponent(supRes[0].name)}`, {
         method: 'POST'
       }).then(r => r.json());
       setComplianceData(compRes);
@@ -243,70 +279,144 @@ export default function App() {
       console.warn("Backend offline or error during runSimulation, using secure client-side PO simulation path", e);
       clearTimeout(timeoutId);
       
-      // Populate Mock Data
+      const isCyber = /ransomware|cyber|attack|wms|system|api|database|hack/i.test(crisisInput);
       const mockCrisisId = `CRISIS-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-      const mockCrisis = {
-        crisis_id: mockCrisisId,
-        disruption_type: "Reported Disruption",
-        severity: "CRITICAL",
-        affected_parts: ["Critical Component A", "Critical Component B"],
-        lat: 23.6978,
-        lng: 120.9605,
-        location_name: "Taiwan (Crisis)"
-      };
-      setCrisisData(mockCrisis);
       
-      setDynamicLocations(prev => ({
-        ...prev,
-        Crisis: { lat: 23.6978, lng: 120.9605, name: "Taiwan (Crisis)" }
-      }));
-      setRingsData([{ lat: 23.6978, lng: 120.9605, color: '#ef4444' }]);
-      setGlobeData([{ startLat: dynamicLocations.HQ.lat, startLng: dynamicLocations.HQ.lng, endLat: 23.6978, endLng: 120.9605, color: ['#ef4444', '#ef4444'] }]);
+      if (isCyber) {
+        const mockCrisis = {
+          crisis_id: mockCrisisId,
+          disruption_type: "LOGISTICS SYSTEM FAILURE (RANSOMWARE)",
+          severity: "CRITICAL",
+          affected_parts: ["Warehouse Management System (WMS)", "Shipment Tracking API", "Customs Documentation Interface"],
+          lat: 51.9244,
+          lng: 4.4777,
+          location_name: "Rotterdam WMS Hub",
+          crisis_type: "CYBER_ATTACK",
+          workflow: "logistics_continuity",
+          affected_systems: ["Warehouse Management System (WMS)", "Shipment Tracking API", "Customs Documentation Interface"],
+          allowed_agents: ["Triage Agent", "Impact Agent", "Dependency Graph Agent", "Contingency Agent", "Compliance Agent", "Financial Agent", "Sandbox Agent"]
+        };
+        setCrisisData(mockCrisis);
+        
+        setDynamicLocations(prev => ({
+          ...prev,
+          Crisis: { lat: 51.9244, lng: 4.4777, name: "Rotterdam WMS Hub" }
+        }));
+        setRingsData([{ lat: 51.9244, lng: 4.4777, color: '#ef4444' }]);
+        setGlobeData([{ startLat: dynamicLocations.HQ.lat, startLng: dynamicLocations.HQ.lng, endLat: 51.9244, endLng: 4.4777, color: ['#ef4444', '#ef4444'] }]);
 
-      setImpactData({
-        crisis_id: mockCrisisId,
-        estimated_delay_days: 15,
-        daily_loss_usd: 10000,
-        total_impact_usd: 150000
-      });
+        setImpactData({
+          crisis_id: mockCrisisId,
+          estimated_delay_days: 6,
+          daily_loss_usd: 750000,
+          total_impact_usd: 4500000
+        });
 
-      const mockSuppliers = [{
-        name: "EuroChips GmbH",
-        country: "Germany",
-        cost_increase_percentage: 8.0,
-        delivery_time_days: 4,
-        lat: 51.1657,
-        lng: 10.4515
-      }];
-      setSuppliers(mockSuppliers);
-      setSelectedSupplier(mockSuppliers[0]);
-      
-      setDynamicLocations(prev => ({
-        ...prev,
-        Alternative: { lat: 51.1657, lng: 10.4515, name: "EuroChips GmbH" }
-      }));
-      setRingsData([
-        { lat: 23.6978, lng: 120.9605, color: '#ef4444' },
-        { lat: 51.1657, lng: 10.4515, color: '#10b981' }
-      ]);
-      setGlobeData(prev => [
-        ...prev,
-        { startLat: 51.1657, startLng: 10.4515, endLat: dynamicLocations.HQ.lat, endLng: dynamicLocations.HQ.lng, color: ['#10b981', '#10b981'] }
-      ]);
+        const mockSuppliers = [{
+          name: "TransPacific Logistics Inc.",
+          country: "Mexico",
+          cost_increase_percentage: 12.0,
+          delivery_time_days: 6,
+          lat: 23.6345,
+          lng: -102.5528
+        }];
+        setSuppliers(mockSuppliers);
+        setSelectedSupplier(mockSuppliers[0]);
+        
+        setDynamicLocations(prev => ({
+          ...prev,
+          Alternative: { lat: 23.6345, lng: -102.5528, name: "TransPacific Logistics Inc." }
+        }));
+        setRingsData([
+          { lat: 51.9244, lng: 4.4777, color: '#ef4444' },
+          { lat: 23.6345, lng: -102.5528, color: '#10b981' }
+        ]);
+        setGlobeData(prev => [
+          ...prev,
+          { startLat: 23.6345, startLng: -102.5528, endLat: dynamicLocations.HQ.lat, endLng: dynamicLocations.HQ.lng, color: ['#10b981', '#10b981'] }
+        ]);
 
-      setComplianceData({
-        supplier_name: "EuroChips GmbH",
-        is_compliant: true,
-        esg_score: 94,
-        sanctions_clear: true,
-        notes: "Approved for enterprise procurement.",
-        xai_report: {
-          monte_carlo_risk: "7% probability of secondary disruption at 14 days.",
-          esg_justification: "ESG score strictly compliant (94/100). Zero sanctions.",
-          dependency_check: "Avoids Tier-2 supplier overlap with the Taiwan (Crisis) crisis zone.",
-          financial_savings: "Estimated total savings vs inaction: $3.2M."
-        }
-      });
+        setComplianceData({
+          supplier_name: "TransPacific Logistics Inc.",
+          is_compliant: true,
+          esg_score: 99,
+          sanctions_clear: true,
+          notes: "Security & SOC2 audits verified. Authorized for emergency failover.",
+          xai_report: {
+            monte_carlo_risk: "Low risk. 100% path redundancy verified.",
+            esg_justification: "SOC2 certified, GDPR compliant, ESG score 99/100.",
+            dependency_check: "No overlap with compromised Rotterdam IT networks.",
+            financial_savings: "Mitigates WMS outage loss. Estimated savings vs inaction: $3.2M."
+          }
+        });
+      } else {
+        const mockCrisis = {
+          crisis_id: mockCrisisId,
+          disruption_type: "Reported Disruption",
+          severity: "CRITICAL",
+          affected_parts: ["Critical Component A", "Critical Component B"],
+          lat: 23.6978,
+          lng: 120.9605,
+          location_name: "Taiwan (Crisis)",
+          crisis_type: "SUPPLY_CHAIN_DISRUPTION",
+          workflow: "procurement",
+          affected_systems: [],
+          allowed_agents: ["Triage Agent", "Financial Agent", "Logistics Agent", "Temporal Agent", "Knowledge Graph Agent", "Compliance Agent", "Sandbox Agent"]
+        };
+        setCrisisData(mockCrisis);
+        
+        setDynamicLocations(prev => ({
+          ...prev,
+          Crisis: { lat: 23.6978, lng: 120.9605, name: "Taiwan (Crisis)" }
+        }));
+        setRingsData([{ lat: 23.6978, lng: 120.9605, color: '#ef4444' }]);
+        setGlobeData([{ startLat: dynamicLocations.HQ.lat, startLng: dynamicLocations.HQ.lng, endLat: 23.6978, endLng: 120.9605, color: ['#ef4444', '#ef4444'] }]);
+
+        setImpactData({
+          crisis_id: mockCrisisId,
+          estimated_delay_days: 15,
+          daily_loss_usd: 320000,
+          total_impact_usd: 4800000
+        });
+
+        const mockSuppliers = [{
+          name: "EuroChips GmbH",
+          country: "Germany",
+          cost_increase_percentage: 8.0,
+          delivery_time_days: 4,
+          lat: 51.1657,
+          lng: 10.4515
+        }];
+        setSuppliers(mockSuppliers);
+        setSelectedSupplier(mockSuppliers[0]);
+        
+        setDynamicLocations(prev => ({
+          ...prev,
+          Alternative: { lat: 51.1657, lng: 10.4515, name: "EuroChips GmbH" }
+        }));
+        setRingsData([
+          { lat: 23.6978, lng: 120.9605, color: '#ef4444' },
+          { lat: 51.1657, lng: 10.4515, color: '#10b981' }
+        ]);
+        setGlobeData(prev => [
+          ...prev,
+          { startLat: 51.1657, startLng: 10.4515, endLat: dynamicLocations.HQ.lat, endLng: dynamicLocations.HQ.lng, color: ['#10b981', '#10b981'] }
+        ]);
+
+        setComplianceData({
+          supplier_name: "EuroChips GmbH",
+          is_compliant: true,
+          esg_score: 94,
+          sanctions_clear: true,
+          notes: "Approved for enterprise procurement.",
+          xai_report: {
+            monte_carlo_risk: "7% probability of secondary disruption at 14 days.",
+            esg_justification: "ESG score strictly compliant (94/100). Zero sanctions.",
+            dependency_check: "Avoids Tier-2 supplier overlap with the Taiwan (Crisis) crisis zone.",
+            financial_savings: "Estimated total savings vs inaction: $3.6M."
+          }
+        });
+      }
 
       // Launch simulated Swarm logs
       triggerLocalSwarmStream();
@@ -345,7 +455,17 @@ export default function App() {
       setRpaFinished(true);
     } catch(e) {
       console.warn("Backend offline or error during handleApprove, using secure client-side PO execution path", e);
-      const fallbackRpaLogs = [
+      const isLogisticsContinuity = crisisData?.workflow === "logistics_continuity";
+      
+      const fallbackRpaLogs = isLogisticsContinuity ? [
+        "[Maestro Orchestrator] 🚀 Triggering Webhook event: CASE_RESOLUTION_COMMIT",
+        "[Maestro Robot-981] 🔗 Connecting to backup logistics API hub... Connected.",
+        "[Maestro Robot-981] 📡 Redirecting tracking endpoints to contingency service...",
+        `[Maestro Robot-981] 🔄 Activating emergency failover: Routing logistics traffic to backup partner '${selectedSupplier.name}'`,
+        "[Maestro Robot-981] 📝 Dispatching offline customs processing notifications...",
+        "[Maestro Orchestrator] 🔒 Disruption Case marked as RESOLVED.",
+        "[Maestro Orchestrator] 📄 Archiving resolution report with cryptographic ledger signature."
+      ] : [
         "[Maestro Orchestrator] 🚀 Triggering Webhook event: CASE_RESOLUTION_COMMIT",
         "[Maestro Robot-981] 🔗 Connecting to Enterprise SAP ECC S/4HANA Hub... Connected.",
         "[Maestro Robot-981] 🔍 Querying Vendor Master Directory for alternative safe records...",
@@ -354,10 +474,13 @@ export default function App() {
         "[Maestro Orchestrator] 🔒 Disruption Case marked as RESOLVED.",
         "[Maestro Orchestrator] 📄 Archiving resolution report with cryptographic ledger signature."
       ];
+      
       setExecutionResult({
         crisis_id: crisisData?.crisis_id || "CRISIS-MOCK",
         chosen_supplier: selectedSupplier.name,
-        action_taken: `Re-routed purchase orders and logistics workflows via Maestro to ${selectedSupplier.name}.`,
+        action_taken: isLogisticsContinuity
+          ? `Activated emergency logistics continuity plan and redirected routing to ${selectedSupplier.name}.`
+          : `Re-routed purchase orders and logistics workflows via Maestro to ${selectedSupplier.name}.`,
         status: "Resolved"
       });
       
@@ -368,6 +491,8 @@ export default function App() {
       setRpaFinished(true);
     }
   };
+
+  const isProcurement = crisisData?.workflow === "procurement" || !crisisData?.workflow;
 
   return (
     <div style={{position: 'relative', width: '100vw', height: '100vh', backgroundColor: '#0f1115', overflow: 'hidden'}}>
@@ -543,9 +668,76 @@ export default function App() {
                   <>
                     <div className="data-row"><span className="data-label">ID</span><span className="data-value">{crisisData.crisis_id}</span></div>
                     <div className="data-row"><span className="data-label">Severity</span><span className="status-badge status-critical">{crisisData.severity}</span></div>
-                    <div className="data-row"><span className="data-label">Parts</span><span className="data-value">{crisisData.affected_parts.join(', ')}</span></div>
+                    <div className="data-row"><span className="data-label">{isProcurement ? "Parts" : "Systems Affected"}</span><span className="data-value">{crisisData.affected_parts.join(', ')}</span></div>
                   </>
                 ) : <p className="data-label">Parsing social sentiment...</p>}
+              </div>
+            )}
+
+            {step >= 1 && policyData && (
+              <div className="glass-panel animate-fade-in" style={{background: 'rgba(15, 17, 21, 0.7)', fontSize: '11px'}}>
+                <h3 style={{marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px'}}>
+                  <GitCommit size={16} color="#0070f2" /> Crisis Policy Engine — Active DAG
+                </h3>
+                {/* State machine strip */}
+                <div style={{display: 'flex', gap: '3px', marginBottom: '10px', flexWrap: 'wrap'}}>
+                  {policyData.valid_states.map((st) => {
+                    const isActive = st === policyData.crisis_state;
+                    const stateOrder = policyData.valid_states.indexOf(st);
+                    const currentOrder = policyData.valid_states.indexOf(policyData.crisis_state);
+                    const isDone = stateOrder < currentOrder;
+                    return (
+                      <span key={st} style={{
+                        padding: '2px 6px', borderRadius: '3px', fontSize: '9px', fontFamily: 'monospace',
+                        background: isActive ? 'rgba(0,112,242,0.2)' : isDone ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${isActive ? '#0070f2' : isDone ? '#10b981' : 'rgba(255,255,255,0.1)'}`,
+                        color: isActive ? '#60a5fa' : isDone ? '#10b981' : '#8b92a5',
+                        fontWeight: isActive ? 'bold' : 'normal',
+                      }}>
+                        {isDone ? '✓ ' : isActive ? '▶ ' : ''}{st}
+                      </span>
+                    );
+                  })}
+                </div>
+                {/* DAG nodes */}
+                <div style={{display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '10px'}}>
+                  {policyData.dag.map((node, i) => (
+                    <div key={node.id} style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                      <div style={{
+                        width: '6px', height: '6px', borderRadius: '50%',
+                        background: i < (policyData.dag.length - 1) ? '#10b981' : '#0070f2',
+                        flexShrink: 0
+                      }} />
+                      <span style={{color: '#e2e8f0', fontFamily: 'monospace'}}>{node.label}</span>
+                      {node.depends_on.length > 0 && (
+                        <span style={{color: '#8b92a5', fontSize: '9px'}}>← {node.depends_on.join(', ')}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {/* Arbitration weights */}
+                <div style={{
+                  background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '4px',
+                  borderLeft: '3px solid #0070f2', fontFamily: 'monospace'
+                }}>
+                  <div style={{color: '#8b92a5', fontSize: '9px', marginBottom: '4px', textTransform: 'uppercase'}}>Arbitration Weights ({policyData.workflow})</div>
+                  {Object.entries(policyData.arbitration_weights).map(([k, v]) => (
+                    <div key={k} style={{display: 'flex', justifyContent: 'space-between', color: '#e2e8f0', fontSize: '10px'}}>
+                      <span>{k}</span>
+                      <span style={{color: '#0070f2', fontWeight: 'bold'}}>{Math.round(v * 100)}%</span>
+                    </div>
+                  ))}
+                </div>
+                {/* Risk gate */}
+                {policyData.risk_gate && (
+                  <div style={{marginTop: '6px', padding: '4px 8px', borderRadius: '3px', fontSize: '9px', fontFamily: 'monospace',
+                    background: policyData.risk_gate === 'PASS' ? 'rgba(16,185,129,0.1)' : policyData.risk_gate === 'HUMAN' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                    border: `1px solid ${policyData.risk_gate === 'PASS' ? '#10b981' : policyData.risk_gate === 'HUMAN' ? '#f59e0b' : '#ef4444'}`,
+                    color: policyData.risk_gate === 'PASS' ? '#10b981' : policyData.risk_gate === 'HUMAN' ? '#f59e0b' : '#ef4444',
+                  }}>
+                    RISK GATE: {policyData.risk_gate} — Provider: {policyData.resolved_provider}
+                  </div>
+                )}
               </div>
             )}
 
@@ -683,7 +875,7 @@ export default function App() {
                     <Terminal size={14} /> AI Swarm Orchestration Stream (SSE)
                   </div>
                   <div style={{flex: 1, overflowY: 'auto'}}>
-                    {streamLogs.map((log, i) => {
+                    {streamLogs.filter(Boolean).map((log, i) => {
                       let color = '#10b981';
                       if (log.includes('WARNING') || log.includes('REJECTED') || log.includes('REJECTING') || log.includes('CASCADING FAILURE')) color = '#ef4444';
                       if (log.includes('System') || log.includes('APPROVED')) color = '#0070f2';
@@ -767,7 +959,7 @@ export default function App() {
             {step >= 3 && (
               <div className="glass-panel animate-fade-in" style={{background: 'rgba(15, 17, 21, 0.7)'}}>
                 <h3 style={{marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8}}>
-                  <Search size={20} color="var(--accent-blue)" /> Logistics Alternatives
+                  <Search size={20} color="var(--accent-blue)" /> {isProcurement ? "Logistics Alternatives" : "Contingency Backup Providers"}
                 </h3>
                 {suppliers.length > 0 ? (
                   <div style={{display: 'flex', gap: 8, flexDirection: 'column'}}>
@@ -784,21 +976,21 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                ) : <p className="data-label">Routing supply lines...</p>}
+                ) : <p className="data-label">{isProcurement ? "Routing supply lines..." : "Analyzing backup provider parameters..."}</p>}
               </div>
             )}
 
             {step >= 4 && (
               <div className="glass-panel animate-fade-in" style={{background: 'rgba(15, 17, 21, 0.7)'}}>
                 <h3 style={{marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8}}>
-                  <ShieldCheck size={20} color="var(--success)" /> Compliance Check
+                  <ShieldCheck size={20} color="var(--success)" /> {isProcurement ? "Compliance Check" : "Security & SOC2 Audit"}
                 </h3>
                 {complianceData ? (
                   <>
                     <div className="data-row"><span className="data-label">Target</span><span className="data-value">{complianceData.supplier_name}</span></div>
-                    <div className="data-row"><span className="data-label">ESG Score</span><span className="data-value">{complianceData.esg_score}/100</span></div>
+                    <div className="data-row"><span className="data-label">{isProcurement ? "ESG Score" : "Security Score"}</span><span className="data-value">{complianceData.esg_score}/100</span></div>
                   </>
-                ) : <p className="data-label">Running legal agent...</p>}
+                ) : <p className="data-label">{isProcurement ? "Running legal agent..." : "Running cybersecurity compliance audit..."}</p>}
               </div>
             )}
 
@@ -821,11 +1013,10 @@ export default function App() {
                   alignItems: 'center', 
                   gap: '8px'
                 }}>
-                  <ShieldCheck size={22} color="#0070f2" /> Decision Intelligence Sheet
+                  <span className="data-label" style={{display: 'block', marginBottom: '15px', fontSize: '10px', color: '#8b92a5', letterSpacing: '0.5px'}}>
+                  CASE GOVERNANCE APPROVED | ROLE: {isProcurement ? "SOURCING OFFICER" : "LOGISTICS & SECURITY DIRECTOR"}
+                  </span>
                 </h3>
-                <span className="data-label" style={{display: 'block', marginBottom: '15px', fontSize: '10px', color: '#8b92a5', letterSpacing: '0.5px'}}>
-                  CASE GOVERNANCE APPROVED | ROLE: SOURCING OFFICER
-                </span>
 
                 {complianceData?.xai_report && (
                   <div style={{
@@ -879,10 +1070,10 @@ export default function App() {
                       fontFamily: 'monospace'
                     }}>
                       <div>
-                        <strong>ESG & Sanctions:</strong> {complianceData.xai_report.esg_justification}
+                        <strong>{isProcurement ? "ESG & Sanctions:" : "Security & SOC2:"}</strong> {complianceData.xai_report.esg_justification}
                       </div>
                       <div>
-                        <strong>Supply Graph Check:</strong> {complianceData.xai_report.dependency_check}
+                        <strong>{isProcurement ? "Supply Graph Check:" : "IT Network Check:"}</strong> {complianceData.xai_report.dependency_check}
                       </div>
                     </div>
                   </div>
@@ -891,7 +1082,7 @@ export default function App() {
                 <p className="data-label" style={{marginBottom: 15, fontSize: '11px'}}>
                   {selectedSupplier ? (
                     <span style={{color: '#10b981', fontWeight: 'bold'}}>
-                      ✓ Ready to commit sourcing route to: {selectedSupplier.name}
+                      ✓ Ready to commit {isProcurement ? "sourcing route" : "continuity plan redirection"} to: {selectedSupplier.name}
                     </span>
                   ) : (
                     <span>⚠️ Select a candidate from the Logistics panel to enable approval.</span>
@@ -919,7 +1110,7 @@ export default function App() {
                     gap: '8px'
                   }}
                 >
-                  <ShieldCheck size={18} /> Authorize Sourcing Route
+                  <ShieldCheck size={18} /> {isProcurement ? "Authorize Sourcing Route" : "Authorize Continuity Plan"}
                 </button>
               </div>
             )}

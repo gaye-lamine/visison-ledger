@@ -57,16 +57,20 @@ flowchart TD
 
 ---
 
-## ⚙️ UiPath Components Used
-- **UiPath Maestro (Case Management)**: Serves as the ultimate orchestration layer. Once the human operator approves the AI's remediation plan, Maestro executes the final business process (PO generation, ERP routing).
-- **API Workflows**: We leverage HTTP Webhooks to connect our custom React 3D War Room and Python Agentic Backend to the UiPath ecosystem seamlessly.
-- **UiPath for Coding Agents (AI-Assisted Development)**: *See Bonus Section below.*
+## ⚙️ UiPath Components Used & Orchestration Strategy
+- **UiPath Maestro (Case Management)**: Coordinates the entire process. Maestro acts as the master state machine that transitions the case from Ingestion to Investigation, Human Governance, and Automated Execution.
+- **UiPath Coded Agents (C#)**: Execute key actions inside Studio Web to fetch cognitive results from our external AI microservices. An example of the C# coded agent workflow is available at [uipath/coded-agent-csharp.cs](uipath/coded-agent-csharp.cs).
+- **Integration Service (Webhooks)**: Securely trigger stage transitions and fetch dynamic payloads. The exact Case Definition schema is available at [uipath/case-definition.json](uipath/case-definition.json).
+
+For a complete guide on importing and running this architecture in the UiPath Automation Cloud, refer to the [UiPath Integration & Webhooks Guide](uipath/studio-web-connectors.md).
 
 ---
 
-## 🤖 Agent Type: Coded Agents
-VisionLedger relies entirely on **Coded Agents** built with the Python SDK for maximum orchestration flexibility. 
-Instead of low-code drag-and-drop, our backend is a robust `FastAPI` application integrating the **Google Gemini 2.5 Flash** model. This allows us to orchestrate a highly dynamic, multi-agent logic tree (Financial Agent -> Logistics Agent -> Knowledge Graph Agent) that handles unpredictable paths before integrating back into UiPath Maestro.
+## 🤖 Agent Type: Hybrid & Coded Agents
+VisionLedger uses a hybrid architecture:
+1. **UiPath Coded Agents**: Coordinate execution and bind variables to Maestro Case properties.
+2. **External Cognitive Swarm**: Powered by **Google Gemini 2.5 Flash** to perform unstructured analysis (Triage, Financial exposure, Logistics alternatives, Compliance, and Security audits).
+This combination blends native UiPath governance with highly creative external agent swarms.
 
 ---
 

@@ -1,6 +1,7 @@
 # OS Metadata
 .DS_Store
 Thumps.db
+.env
 
 # Private Pitch, Devpost story and temporary notes
 pitch.md
